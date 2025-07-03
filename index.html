@@ -464,9 +464,10 @@
         document.querySelectorAll('.rubrique').forEach(rubrique => {
             const links = [];
             rubrique.querySelectorAll('.link').forEach(link => {
+                const scrapedData = link.querySelector('.scraped-data');
                 links.push({
                     url: link.querySelector('a').href,
-                    content: link.querySelector('.scraped-data').innerHTML
+                    content: scrapedData ? scrapedData.innerHTML : 'Aucun contenu scrapé'
                 });
             });
             
@@ -479,7 +480,7 @@
         let dataStr, fileName;
         if (format === 'json') {
             dataStr = JSON.stringify(rubriques, null, 2);
-            fileName = 'scraped_data.json';
+            fileName = 'ghostnet_data.json';
         } else { // CSV
             let csvContent = "Rubrique,Lien,Contenu\n";
             rubriques.forEach(rubrique => {
@@ -493,18 +494,20 @@
                 });
             });
             dataStr = csvContent;
-            fileName = 'scraped_data.csv';
+            fileName = 'ghostnet_data.csv';
         }
 
-        const blob = new Blob([dataStr], { type: format === 'json' ? 'application/json' : 'text/csv' });
+        const blob = new Blob([dataStr], { type: format === 'json' ? 'application/json' : 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = fileName;
         document.body.appendChild(a);
         a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 100);
         
         document.getElementById('export-options').style.display = 'none';
     }
@@ -523,9 +526,10 @@
             };
 
             rubrique.querySelectorAll('.link').forEach(link => {
+                const scrapedData = link.querySelector('.scraped-data');
                 rubriqueData.links.push({
                     url: link.querySelector('a').href,
-                    content: link.querySelector('.scraped-data').innerHTML
+                    content: scrapedData ? scrapedData.innerHTML : 'Aucun contenu scrapé'
                 });
             });
 
@@ -539,48 +543,53 @@
     function loadData() {
         const savedData = localStorage.getItem('ghostnetScraperData');
         if (!savedData) {
-            alert('Aucune donnée sauvegardée trouvée.');
+            // alert('Aucune donnée sauvegardée trouvée.');
             return;
         }
 
-        const data = JSON.parse(savedData);
-        compteurRubriques = data.compteurRubriques || 0;
+        try {
+            const data = JSON.parse(savedData);
+            compteurRubriques = data.compteurRubriques || 0;
 
-        // Effacer les rubriques existantes
-        document.getElementById('rubriques-container').innerHTML = '';
-        document.getElementById('navigation-container').innerHTML = '';
+            // Effacer les rubriques existantes
+            document.getElementById('rubriques-container').innerHTML = '';
+            document.getElementById('navigation-container').innerHTML = '';
 
-        // Recréer les rubriques
-        data.rubriques.forEach(rubriqueData => {
-            const rubriqueDiv = document.createElement('div');
-            rubriqueDiv.classList.add('rubrique');
-            rubriqueDiv.id = rubriqueData.id;
-            rubriqueDiv.innerHTML = `
-                <h2 contenteditable="true">${rubriqueData.title}</h2>
-                <input type="text" id="link-input-${rubriqueData.id.split('-')[1]}" placeholder="Ajouter un lien HTTPS" />
-                <button onclick="ajouterLien(${rubriqueData.id.split('-')[1]})">Ajouter Lien</button>
-                <div id="links-container-${rubriqueData.id.split('-')[1]}"></div>
-                <button class="delete-button" onclick="supprimerRubrique(${rubriqueData.id.split('-')[1]})">Supprimer Rubrique</button>
-            `;
-            document.getElementById('rubriques-container').appendChild(rubriqueDiv);
-            ajouterBoutonNavigation(rubriqueData.id.split('-')[1]);
-
-            // Ajouter les liens
-            const linksContainer = document.getElementById(`links-container-${rubriqueData.id.split('-')[1]}`);
-            rubriqueData.links.forEach(linkData => {
-                const linkDiv = document.createElement('div');
-                linkDiv.classList.add('link');
-                linkDiv.innerHTML = `
-                    <a href="${linkData.url}" target="_blank">${linkData.url}</a>
-                    <button onclick="ouvrirLien('${linkData.url}')">Ouvrir Lien</button>
-                    <button class="delete-button" onclick="supprimerLien(this)">Supprimer</button>
-                    <div class="scraped-data">${linkData.content}</div>
+            // Recréer les rubriques
+            data.rubriques.forEach(rubriqueData => {
+                const rubriqueDiv = document.createElement('div');
+                rubriqueDiv.classList.add('rubrique');
+                rubriqueDiv.id = rubriqueData.id;
+                rubriqueDiv.innerHTML = `
+                    <h2 contenteditable="true">${rubriqueData.title}</h2>
+                    <input type="text" id="link-input-${rubriqueData.id.split('-')[1]}" placeholder="Ajouter un lien HTTPS" />
+                    <button onclick="ajouterLien(${rubriqueData.id.split('-')[1]})">Ajouter Lien</button>
+                    <div id="links-container-${rubriqueData.id.split('-')[1]}"></div>
+                    <button class="delete-button" onclick="supprimerRubrique(${rubriqueData.id.split('-')[1]})">Supprimer Rubrique</button>
                 `;
-                linksContainer.appendChild(linkDiv);
-            });
-        });
+                document.getElementById('rubriques-container').appendChild(rubriqueDiv);
+                ajouterBoutonNavigation(rubriqueData.id.split('-')[1]);
 
-        alert('Données chargées avec succès!');
+                // Ajouter les liens
+                const linksContainer = document.getElementById(`links-container-${rubriqueData.id.split('-')[1]}`);
+                rubriqueData.links.forEach(linkData => {
+                    const linkDiv = document.createElement('div');
+                    linkDiv.classList.add('link');
+                    linkDiv.innerHTML = `
+                        <a href="${linkData.url}" target="_blank">${linkData.url}</a>
+                        <button onclick="ouvrirLien('${linkData.url}')">Ouvrir Lien</button>
+                        <button class="delete-button" onclick="supprimerLien(this)">Supprimer</button>
+                        <div class="scraped-data">${linkData.content}</div>
+                    `;
+                    linksContainer.appendChild(linkDiv);
+                });
+            });
+
+            // alert('Données chargées avec succès!');
+        } catch (error) {
+            console.error('Erreur lors du chargement des données:', error);
+            alert('Erreur lors du chargement des données sauvegardées.');
+        }
     }
 
     function ouvrirLien(lien) {
@@ -631,3 +640,5 @@
 
 </body>
 </html>
+
+ 
